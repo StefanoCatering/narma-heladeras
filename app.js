@@ -90,7 +90,7 @@ function cerrarSesion() {
   mostrarLogin();
 }
 
-// Enter en el form de login
+// Enter en el form de login + ruteo por hash
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('login-pass').addEventListener('keydown', e => {
     if (e.key === 'Enter') intentarLogin();
@@ -98,7 +98,13 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('login-usuario').addEventListener('keydown', e => {
     if (e.key === 'Enter') document.getElementById('login-pass').focus();
   });
-  mostrarLogin();
+
+  // Si la URL tiene #qr, abrir directo el formulario de funcionarios
+  if (window.location.hash === '#qr') {
+    abrirQR();
+  } else {
+    mostrarLogin();
+  }
 });
 
 // ════════════════════════════════════════════════════════
