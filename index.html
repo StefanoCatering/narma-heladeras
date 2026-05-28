@@ -81,7 +81,7 @@
 
       <!-- Logo -->
       <div class="login-logo-wrap">
-        <div class="login-logo">när<span>ma</span></div>
+        <img src="logo_narma.png" alt="närma" class="login-logo-img"/>
         <div class="login-tagline">sistema de heladeras</div>
         <svg width="36" height="36" class="login-estrella" style="color:rgba(240,235,231,0.25)"><use href="#g-estrella"/></svg>
       </div>
@@ -135,7 +135,7 @@
 
   <!-- NAV -->
   <div class="nav">
-    <span class="nav-logo">när<span>ma</span></span>
+    <img src="logo_narma.png" alt="närma" class="nav-logo-img"/>
     <button id="nav-btn-admin"    class="nav-btn" style="display:none;" onclick="switchView('admin',this)">Admin</button>
     <button id="nav-btn-cliente"  class="nav-btn" style="display:none;" onclick="switchView('cliente',this)">Mi empresa</button>
     <button id="nav-btn-operador" class="nav-btn" style="display:none;" onclick="switchView('operador',this)">Recarga</button>
@@ -299,7 +299,7 @@
     <div class="qr-hero-content">
       <div class="qr-hero-label">Heladera · <span class="js-heladera"></span></div>
       <div class="qr-hero-title">comé<br><span>sano</span><br>y rico</div>
-      <div class="qr-hero-tagline">närma · viandas saludables</div>
+      <div class="qr-hero-tagline"><img src="logo_narma.png" alt="närma" class="qr-logo-img"/></div>
     </div>
     <div class="qr-hero-personaje">
       <img src="personaje_healthy.jpg" alt="Personaje Närma" class="qr-personaje-img"/>
@@ -336,6 +336,7 @@
         <div class="card-title">primer registro</div>
         <div class="form-group"><label class="form-label">Nombre completo</label><input type="text" id="reg-nombre" placeholder="Lucía González"/></div>
         <div class="form-group"><label class="form-label">Cédula</label><input type="tel" id="reg-cedula" placeholder="4.567.890"/></div>
+        <div class="form-group"><label class="form-label">Celular</label><input type="tel" id="reg-celular" placeholder="0981 123 456"/></div>
         <div class="form-group"><label class="form-label">Email corporativo</label><input type="email" id="reg-mail" placeholder="lucia@empresa.com"/></div>
         <button class="btn-primary" onclick="registrar()">Registrarse →</button>
         <p style="font-size:10px;color:var(--text3);margin-top:10px;text-align:center;">

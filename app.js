@@ -158,9 +158,9 @@ async function sheetsUpdate(range, values) {
 async function cargarDatosDesdeSheets() {
   try {
     // Funcionarios
-    const fRows = await sheetsRead('funcionarios!A2:D');
+    const fRows = await sheetsRead('funcionarios!A2:E');
     DB.funcionarios = fRows.map(r => ({
-      cedula: r[0] || '', nombre: r[1] || '', mail: r[2] || '', fecha: r[3] || ''
+      cedula: r[0] || '', nombre: r[1] || '', celular: r[2] || '', mail: r[3] || '', fecha: r[4] || ''
     }));
 
     // Consumos
@@ -352,19 +352,20 @@ function volverCedula() {
 }
 
 async function registrar() {
-  const nombre = document.getElementById('reg-nombre').value.trim();
-  const cedula = document.getElementById('reg-cedula').value.trim();
-  const mail   = document.getElementById('reg-mail').value.trim();
-  if (!nombre || !cedula || !mail) { alert('Completá todos los campos.'); return; }
+  const nombre  = document.getElementById('reg-nombre').value.trim();
+  const cedula  = document.getElementById('reg-cedula').value.trim();
+  const celular = document.getElementById('reg-celular').value.trim();
+  const mail    = document.getElementById('reg-mail').value.trim();
+  if (!nombre || !cedula || !celular || !mail) { alert('Completá todos los campos.'); return; }
   if (DB.funcionarios.find(f => f.cedula.replace(/\D/g,'') === cedula.replace(/\D/g,''))) {
     alert('Esa cédula ya está registrada.'); return;
   }
-  currentFunc = { cedula, nombre, mail, fecha: now() };
+  currentFunc = { cedula, nombre, celular, mail, fecha: now() };
   DB.funcionarios.push(currentFunc);
 
   // Guardar en Sheets
   try {
-    await sheetsAppend('funcionarios', [cedula, nombre, mail, now()]);
+    await sheetsAppend('funcionarios', [cedula, nombre, celular, mail, now()]);
   } catch(e) { console.error('Error guardando funcionario:', e); }
 
   document.getElementById('step-registro').style.display = 'none';

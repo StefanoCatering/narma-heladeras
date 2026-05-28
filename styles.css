@@ -105,14 +105,25 @@ body {
   margin-bottom: 32px;
   position: relative;
 }
-.login-logo {
-  font-family: var(--font);
-  font-size: 36px;
-  font-weight: 600;
-  color: var(--beige);
-  letter-spacing: -0.04em;
+.login-logo-img {
+  height: 52px;
+  display: block;
+  margin: 0 auto 6px;
+  filter: brightness(0) invert(1) sepia(1) saturate(5) hue-rotate(335deg);
 }
-.login-logo span { color: var(--orange); }
+.nav-logo-img {
+  height: 28px;
+  display: block;
+  margin-right: 10px;
+  flex-shrink: 0;
+  filter: brightness(0) invert(1) sepia(1) saturate(5) hue-rotate(335deg);
+}
+.qr-logo-img {
+  height: 22px;
+  display: block;
+  filter: brightness(0) invert(1) sepia(1) saturate(5) hue-rotate(335deg);
+  opacity: 0.6;
+}
 .login-tagline {
   font-size: 9px;
   color: rgba(240,235,231,0.35);
