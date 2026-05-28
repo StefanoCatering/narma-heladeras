@@ -33,6 +33,7 @@ body {
   color: var(--text);
   background: var(--beige);
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 /* ══════════════════════════════════════════════════════
@@ -40,13 +41,16 @@ body {
    ══════════════════════════════════════════════════════ */
 .login-wrap {
   min-height: 100vh;
+  width: 100vw;
   background: var(--navy);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px 16px;
-  position: relative;
+  position: fixed;
+  top: 0; left: 0;
   overflow: hidden;
+  z-index: 1000;
 }
 
 /* Fondo decorativo login */
@@ -190,8 +194,8 @@ body {
   position: relative;
 }
 .app-bg-deco { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; overflow: hidden; }
-.bg-deco-tl { position: absolute; top: -20px; left: -20px; }
-.bg-deco-br { position: absolute; bottom: -20px; right: -20px; }
+.bg-deco-tl { position: absolute; top: -10px; left: -10px; }
+.bg-deco-br { position: absolute; bottom: -10px; right: -10px; }
 
 /* ══════════════════════════════════════════════════════
    NAV
@@ -382,13 +386,13 @@ input:focus, select:focus { border-color: var(--orange); background: white; }
    ══════════════════════════════════════════════════════ */
 .qr-hero {
   background: var(--navy);
-  padding: 24px 20px 0;
+  padding: 28px 20px 0;
   display: flex;
   align-items: flex-end;
   gap: 12px;
   position: relative;
   overflow: hidden;
-  min-height: 180px;
+  min-height: 230px;
 }
 .qr-hero::before {
   content: '';
@@ -404,7 +408,7 @@ input:focus, select:focus { border-color: var(--orange); background: white; }
 .qr-hero-title span { color: var(--orange); }
 .qr-hero-tagline { font-size: 9px; color: rgba(240,235,231,0.3); letter-spacing: 0.08em; text-transform: uppercase; }
 .qr-hero-personaje { flex-shrink: 0; align-self: flex-end; }
-.qr-personaje-img { width: 110px; display: block; border-radius: 12px 12px 0 0; }
+.qr-personaje-img { width: 130px; display: block; border-radius: 0; }
 .qr-deco-estrella { position: absolute; top: 14px; right: 14px; }
 .qr-deco-flor { position: absolute; bottom: 20px; left: 50%; }
 
