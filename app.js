@@ -1,6 +1,14 @@
 // ═══════════════════════════════════════════════════════
-//  NÄRMA HELADERAS — LÓGICA
+//  NÄRMA HELADERAS — LÓGICA v4
+//  Con persistencia real en Google Sheets
 // ═══════════════════════════════════════════════════════
+
+// ── CREDENCIALES GOOGLE SHEETS ───────────────────────────
+const SHEETS_CONFIG = {
+  spreadsheetId: "13PzNC5qFziLC3obu79P65yZ-JlU6JaJF0ynzHUovt6o",
+  clientEmail:   "narma-sheets@high-splicer-497717-h8.iam.gserviceaccount.com",
+  // La private key se carga desde config para mantener el archivo limpio
+};
 
 // ── APLICAR COLORES DESDE CONFIG ────────────────────────
 (function aplicarConfig() {
@@ -27,17 +35,16 @@ CONFIG.catalogo.forEach(it => {
   STOCK_INICIAL[it.id] = Math.max(3, Math.round(it.mix * 10 * 5 + 2));
 });
 
-// ── BASE DE DATOS EN MEMORIA ─────────────────────────────
+// ── BASE DE DATOS LOCAL (cache mientras carga Sheets) ───
 const DB = {
   funcionarios: [],
   stock: JSON.parse(JSON.stringify(STOCK_INICIAL)),
   consumos: [],
+  cargado: false,
 };
 
-// ── SESIÓN ACTIVA ────────────────────────────────────────
-let SESSION = null;   // { usuario, rol, empresa, nombre }
-
-// ── ESTADO QR ────────────────────────────────────────────
+// ── SESIÓN ───────────────────────────────────────────────
+let SESSION = null;
 let currentFunc   = null;
 let selectedItems = {};
 
@@ -47,6 +54,7 @@ const initials = n => n.split(' ').slice(0,2).map(w => w[0]).join('').toUpperCas
 const getItem  = id => CONFIG.catalogo.find(x => x.id === id);
 const getNombre= c  => { const i = getItem(c.item); return i ? i.nombre : '—'; };
 const getCat   = c  => { const i = getItem(c.item); return i ? i.cat    : '—'; };
+const now      = ()  => new Date().toLocaleString('es-PY', { dateStyle:'short', timeStyle:'short' });
 
 function catPill(cat) {
   const slug = cat
@@ -56,9 +64,145 @@ function catPill(cat) {
   return `<span class="cat-pill cat-${slug}">${cat}</span>`;
 }
 
-// ════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
+//  GOOGLE SHEETS API — JWT + fetch directo
+// ══════════════════════════════════════════════════════════
+
+// Generar JWT para autenticar con Google
+async function getAccessToken() {
+  const privateKey = CONFIG.googlePrivateKey;
+  const clientEmail = SHEETS_CONFIG.clientEmail;
+  const scope = "https://www.googleapis.com/auth/spreadsheets";
+
+  const header = { alg: "RS256", typ: "JWT" };
+  const now2 = Math.floor(Date.now() / 1000);
+  const claim = {
+    iss: clientEmail,
+    scope,
+    aud: "https://oauth2.googleapis.com/token",
+    exp: now2 + 3600,
+    iat: now2,
+  };
+
+  const b64 = obj => btoa(JSON.stringify(obj))
+    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+
+  const header64 = b64(header);
+  const claim64  = b64(claim);
+  const sigInput = `${header64}.${claim64}`;
+
+  // Importar clave privada
+  const keyData = privateKey
+    .replace(/-----BEGIN PRIVATE KEY-----/, '')
+    .replace(/-----END PRIVATE KEY-----/, '')
+    .replace(/\n/g, '');
+  const binaryKey = Uint8Array.from(atob(keyData), c => c.charCodeAt(0));
+  const cryptoKey = await crypto.subtle.importKey(
+    'pkcs8', binaryKey.buffer,
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false, ['sign']
+  );
+
+  // Firmar
+  const encoder = new TextEncoder();
+  const signature = await crypto.subtle.sign(
+    'RSASSA-PKCS1-v1_5', cryptoKey, encoder.encode(sigInput)
+  );
+  const sig64 = btoa(String.fromCharCode(...new Uint8Array(signature)))
+    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+
+  const jwt = `${sigInput}.${sig64}`;
+
+  // Obtener access token
+  const resp = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
+  });
+  const data = await resp.json();
+  return data.access_token;
+}
+
+// Leer un rango del Sheet
+async function sheetsRead(range) {
+  const token = await getAccessToken();
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_CONFIG.spreadsheetId}/values/${encodeURIComponent(range)}`;
+  const resp = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  const data = await resp.json();
+  return data.values || [];
+}
+
+// Escribir (append) una fila al Sheet
+async function sheetsAppend(sheet, values) {
+  const token = await getAccessToken();
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_CONFIG.spreadsheetId}/values/${encodeURIComponent(sheet + '!A1')}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`;
+  await fetch(url, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ values: [values] }),
+  });
+}
+
+// Actualizar un rango específico
+async function sheetsUpdate(range, values) {
+  const token = await getAccessToken();
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_CONFIG.spreadsheetId}/values/${encodeURIComponent(range)}?valueInputOption=RAW`;
+  await fetch(url, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ values }),
+  });
+}
+
+// Cargar todos los datos desde Sheets al iniciar
+async function cargarDatosDesdeSheets() {
+  try {
+    // Funcionarios
+    const fRows = await sheetsRead('funcionarios!A2:D');
+    DB.funcionarios = fRows.map(r => ({
+      cedula: r[0] || '', nombre: r[1] || '', mail: r[2] || '', fecha: r[3] || ''
+    }));
+
+    // Consumos
+    const cRows = await sheetsRead('consumos!A2:F');
+    DB.consumos = cRows.map(r => ({
+      hora:   r[0] || '',
+      cedula: r[1] || '',
+      nombre: r[2] || '',
+      item:   parseInt(r[3]) || 0,
+      nombre_item: r[4] || '',
+      monto:  parseInt(r[5]) || 0,
+    })).reverse(); // más recientes primero
+
+    // Stock
+    const sRows = await sheetsRead('stock!A2:C');
+    sRows.forEach(r => {
+      const id = parseInt(r[0]);
+      if (id) DB.stock[id] = parseInt(r[2]) || 0;
+    });
+
+    DB.cargado = true;
+  } catch(e) {
+    console.error('Error cargando Sheets:', e);
+    // Si falla, sigue con datos en memoria
+  }
+}
+
+// Inicializar stock en Sheets (solo primera vez)
+async function inicializarStockEnSheets() {
+  const rows = await sheetsRead('stock!A2:A');
+  if (rows.length === 0) {
+    // Sheet vacío — cargar catálogo inicial
+    const values = CONFIG.catalogo.map(it => [
+      it.id, it.nombre, STOCK_INICIAL[it.id]
+    ]);
+    await sheetsUpdate('stock!A2', values);
+  }
+}
+
+// ══════════════════════════════════════════════════════════
 //  LOGIN
-// ════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 
 function mostrarLogin() {
   document.getElementById('screen-login').style.display  = 'flex';
@@ -72,16 +216,13 @@ function mostrarLogin() {
 function intentarLogin() {
   const u = document.getElementById('login-usuario').value.trim().toLowerCase();
   const p = document.getElementById('login-pass').value;
-  const found = CONFIG.usuarios.find(x =>
-    x.usuario.toLowerCase() === u && x.pass === p
-  );
+  const found = CONFIG.usuarios.find(x => x.usuario.toLowerCase() === u && x.pass === p);
   if (!found) {
     document.getElementById('login-error').style.display = 'block';
     document.getElementById('login-pass').value = '';
     return;
   }
   SESSION = found;
-  document.getElementById('login-error').style.display = 'none';
   iniciarApp();
 }
 
@@ -90,8 +231,7 @@ function cerrarSesion() {
   mostrarLogin();
 }
 
-// Enter en el form de login + ruteo por hash
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('login-pass').addEventListener('keydown', e => {
     if (e.key === 'Enter') intentarLogin();
   });
@@ -99,34 +239,29 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Enter') document.getElementById('login-pass').focus();
   });
 
-  // Si la URL tiene #qr, abrir directo el formulario de funcionarios
-  if (window.location.hash === '#qr') {
-    abrirQR();
-  } else {
-    mostrarLogin();
-  }
+  // Cargar datos de Sheets en segundo plano
+  cargarDatosDesdeSheets().then(() => {
+    inicializarStockEnSheets();
+  });
+
+  if (window.location.hash === '#qr') abrirQR();
+  else mostrarLogin();
 });
 
-// ════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 //  INICIAR APP SEGÚN ROL
-// ════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 
 function iniciarApp() {
   document.getElementById('screen-login').style.display = 'none';
-
-  // Nombre de sesión en nav
   document.getElementById('nav-usuario').textContent = SESSION.nombre;
 
-  // Mostrar/ocultar botones de nav según rol
   const btnAdmin    = document.getElementById('nav-btn-admin');
   const btnCliente  = document.getElementById('nav-btn-cliente');
   const btnOperador = document.getElementById('nav-btn-operador');
   const btnQR       = document.getElementById('nav-btn-qr');
 
-  btnAdmin.style.display    = 'none';
-  btnCliente.style.display  = 'none';
-  btnOperador.style.display = 'none';
-  btnQR.style.display       = 'none';
+  [btnAdmin, btnCliente, btnOperador, btnQR].forEach(b => b.style.display = 'none');
 
   if (SESSION.rol === 'admin') {
     btnAdmin.style.display = 'inline-flex';
@@ -137,9 +272,8 @@ function iniciarApp() {
     btnCliente.style.display = 'inline-flex';
     document.getElementById('screen-app').style.display = 'block';
     switchView('cliente', btnCliente);
-    // Rellenar datos de empresa en vista cliente
-    document.getElementById('cliente-nombre').textContent  = SESSION.empresa;
-    document.getElementById('cliente-avatar').textContent  = initials(SESSION.empresa);
+    document.getElementById('cliente-nombre').textContent = SESSION.empresa;
+    document.getElementById('cliente-avatar').textContent = initials(SESSION.empresa);
   } else if (SESSION.rol === 'operador') {
     btnOperador.style.display = 'inline-flex';
     document.getElementById('screen-app').style.display = 'block';
@@ -147,9 +281,9 @@ function iniciarApp() {
   }
 }
 
-// ════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 //  NAVEGACIÓN
-// ════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 
 function switchView(v, btn) {
   document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
@@ -172,9 +306,9 @@ function switchTab(t, el) {
   if (t === 'funcionarios') renderFuncionarios();
 }
 
-// ════════════════════════════════════════════════════════
-//  QR FLOW (público — sin login)
-// ════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
+//  QR FLOW
+// ══════════════════════════════════════════════════════════
 
 function abrirQR() {
   document.getElementById('screen-app').style.display   = 'none';
@@ -184,23 +318,20 @@ function abrirQR() {
 }
 
 function cerrarQR() {
-  document.getElementById('screen-qr').style.display  = 'none';
-  if (SESSION) {
-    document.getElementById('screen-app').style.display = 'block';
-  } else {
-    mostrarLogin();
-  }
+  document.getElementById('screen-qr').style.display = 'none';
+  if (SESSION) document.getElementById('screen-app').style.display = 'block';
+  else mostrarLogin();
 }
 
 function resetQR() {
   selectedItems = {};
   currentFunc   = null;
-  document.getElementById('step-cedula').style.display    = 'block';
-  document.getElementById('step-registro').style.display  = 'none';
-  document.getElementById('step-items').style.display     = 'none';
-  document.getElementById('cedula-input').value           = '';
-  document.getElementById('qr-success').style.display     = 'none';
-  document.getElementById('confirm-area').style.display   = 'none';
+  document.getElementById('step-cedula').style.display   = 'block';
+  document.getElementById('step-registro').style.display = 'none';
+  document.getElementById('step-items').style.display    = 'none';
+  document.getElementById('cedula-input').value          = '';
+  document.getElementById('qr-success').style.display   = 'none';
+  document.getElementById('confirm-area').style.display  = 'none';
 }
 
 function buscarFuncionario() {
@@ -219,16 +350,23 @@ function volverCedula() {
   document.getElementById('step-cedula').style.display   = 'block';
   document.getElementById('step-registro').style.display = 'none';
 }
-function registrar() {
+
+async function registrar() {
   const nombre = document.getElementById('reg-nombre').value.trim();
   const cedula = document.getElementById('reg-cedula').value.trim();
   const mail   = document.getElementById('reg-mail').value.trim();
   if (!nombre || !cedula || !mail) { alert('Completá todos los campos.'); return; }
   if (DB.funcionarios.find(f => f.cedula.replace(/\D/g,'') === cedula.replace(/\D/g,''))) {
-    alert('Esa cédula ya está registrada. Ingresá con tu cédula.'); return;
+    alert('Esa cédula ya está registrada.'); return;
   }
-  currentFunc = { cedula, nombre, mail };
+  currentFunc = { cedula, nombre, mail, fecha: now() };
   DB.funcionarios.push(currentFunc);
+
+  // Guardar en Sheets
+  try {
+    await sheetsAppend('funcionarios', [cedula, nombre, mail, now()]);
+  } catch(e) { console.error('Error guardando funcionario:', e); }
+
   document.getElementById('step-registro').style.display = 'none';
   mostrarItems();
 }
@@ -283,14 +421,30 @@ function actualizarConfirm() {
   document.getElementById('confirm-total').textContent = 'Gs. ' + fmt(total);
 }
 
-function confirmar() {
+async function confirmar() {
   const ids = Object.keys(selectedItems).map(Number);
   if (ids.length === 0) return;
   const hora = new Date().toLocaleTimeString('es-PY', { hour:'2-digit', minute:'2-digit' });
-  ids.forEach(id => {
-    DB.consumos.unshift({ hora, nombre:currentFunc.nombre, cedula:currentFunc.cedula, item:id, monto:getItem(id).precio });
+  const timestamp = now();
+
+  // Guardar cada consumo
+  for (const id of ids) {
+    const it = getItem(id);
+    const consumo = { hora, cedula: currentFunc.cedula, nombre: currentFunc.nombre, item: id, monto: it.precio };
+    DB.consumos.unshift(consumo);
     if (DB.stock[id] > 0) DB.stock[id]--;
-  });
+
+    try {
+      await sheetsAppend('consumos', [timestamp, currentFunc.cedula, currentFunc.nombre, id, it.nombre, it.precio]);
+    } catch(e) { console.error('Error guardando consumo:', e); }
+  }
+
+  // Actualizar stock en Sheets
+  try {
+    const stockValues = CONFIG.catalogo.map(it => [it.id, it.nombre, DB.stock[it.id] || 0]);
+    await sheetsUpdate('stock!A2', stockValues);
+  } catch(e) { console.error('Error actualizando stock:', e); }
+
   document.getElementById('item-grid').style.display    = 'none';
   document.getElementById('confirm-area').style.display = 'none';
   document.getElementById('qr-success').style.display   = 'block';
@@ -301,12 +455,12 @@ function confirmar() {
   }, 2800);
 }
 
-// ════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 //  ADMIN
-// ════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 
 function renderAdmin() {
-  const total  = DB.consumos.reduce((a,c) => a+c.monto, 0);
+  const total  = DB.consumos.reduce((a,c) => a + c.monto, 0);
   const cnt    = DB.consumos.length;
   const ticket = cnt > 0 ? Math.round(total/cnt) : 0;
 
@@ -351,10 +505,10 @@ function renderConsumos() {
   const fc    = document.getElementById('filtro-cat').value;
   const lista = fc ? DB.consumos.filter(c => getCat(c)===fc) : DB.consumos;
   document.getElementById('tabla-consumos').innerHTML = lista.length === 0
-    ? `<tr><td colspan="5" class="empty-state">Sin consumos registrados aún.</td></tr>`
+    ? `<tr><td colspan="5" class="empty-state">Sin consumos aún.</td></tr>`
     : lista.map(c => `<tr>
         <td style="color:var(--text3);font-weight:500;">${c.hora}</td>
-        <td>${c.nombre.split(' ')[0]}</td>
+        <td>${c.nombre ? c.nombre.split(' ')[0] : '—'}</td>
         <td>${catPill(getCat(c))}</td>
         <td style="font-weight:500;">${getNombre(c)}</td>
         <td style="font-weight:600;color:var(--orange);">Gs.${fmt(c.monto)}</td>
@@ -387,7 +541,7 @@ function renderStock() {
 
 function renderFuncionarios() {
   document.getElementById('tabla-func').innerHTML = DB.funcionarios.length === 0
-    ? `<tr><td colspan="5" class="empty-state">Sin funcionarios registrados aún.</td></tr>`
+    ? `<tr><td colspan="5" class="empty-state">Sin funcionarios aún.</td></tr>`
     : DB.funcionarios.map(f => {
         const cs    = DB.consumos.filter(c => c.cedula===f.cedula);
         const total = cs.reduce((a,c)=>a+c.monto,0);
@@ -404,15 +558,15 @@ function renderFuncionarios() {
       }).join('');
 }
 
-// ════════════════════════════════════════════════════════
-//  OPERADOR — recarga de stock
-// ════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
+//  OPERADOR
+// ══════════════════════════════════════════════════════════
 
 function renderOperador() {
   document.getElementById('op-tabla').innerHTML = CONFIG.catalogo.map(it => {
     const disp = DB.stock[it.id] || 0;
     const pct  = Math.round(disp/STOCK_INICIAL[it.id]*100);
-    let cls = pct>50 ? 'badge-success' : pct>20 ? 'badge-warning' : 'badge-danger';
+    const cls  = pct>50 ? 'badge-success' : pct>20 ? 'badge-warning' : 'badge-danger';
     return `<tr>
       <td style="font-weight:600;">${it.nombre}</td>
       <td>${catPill(it.cat)}</td>
@@ -420,47 +574,47 @@ function renderOperador() {
         <div class="stock-bar"><div class="stock-fill" style="width:${pct}%;background:${pct>50?'#00795E':pct>20?'#F5A72D':'#FF3D03'};"></div></div>
       </td>
       <td>
-        <input type="number" min="0" max="99" value="0"
-          id="recarga-${it.id}"
-          style="width:64px;padding:6px 8px;border:1.5px solid var(--border2);border-radius:8px;font-family:var(--font);font-size:12px;text-align:center;background:var(--beige);"
-        />
+        <input type="number" min="0" max="99" value="0" id="recarga-${it.id}"
+          style="width:64px;padding:6px 8px;border:1.5px solid var(--border2);border-radius:8px;font-family:var(--font);font-size:12px;text-align:center;background:var(--beige);"/>
       </td>
       <td><span class="badge ${cls}">${pct>50?'OK':pct>20?'Bajo':'Reponer'}</span></td>
     </tr>`;
   }).join('');
 }
 
-function confirmarRecarga() {
+async function confirmarRecarga() {
   let total = 0;
   CONFIG.catalogo.forEach(it => {
     const input = document.getElementById('recarga-'+it.id);
     const cant  = parseInt(input.value) || 0;
-    if (cant > 0) {
-      DB.stock[it.id] = (DB.stock[it.id] || 0) + cant;
-      total += cant;
-    }
+    if (cant > 0) { DB.stock[it.id] = (DB.stock[it.id]||0) + cant; total += cant; }
   });
   if (total === 0) { alert('Ingresá al menos una unidad para recargar.'); return; }
-  alert(`✓ Recarga registrada: ${total} unidades agregadas al stock.`);
+
+  try {
+    const stockValues = CONFIG.catalogo.map(it => [it.id, it.nombre, DB.stock[it.id]||0]);
+    await sheetsUpdate('stock!A2', stockValues);
+    alert(`✓ Recarga registrada: ${total} unidades agregadas al stock.`);
+  } catch(e) {
+    alert('Error guardando recarga. Verificá tu conexión.');
+  }
   renderOperador();
 }
 
-// ════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 //  CLIENTE
-// ════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 
 function renderCliente() {
-  const empresa  = SESSION ? SESSION.empresa : CONFIG.nombreEmpresa;
-  const consumos = DB.consumos; // cuando haya multi-empresa, filtrar por empresa
-  const total    = consumos.reduce((a,c)=>a+c.monto,0);
-  const funcsActivos = [...new Set(consumos.map(c=>c.cedula))].length;
+  const total        = DB.consumos.reduce((a,c)=>a+c.monto,0);
+  const funcsActivos = [...new Set(DB.consumos.map(c=>c.cedula))].length;
 
-  document.getElementById('c-cons').textContent  = consumos.length;
+  document.getElementById('c-cons').textContent  = DB.consumos.length;
   document.getElementById('c-total').textContent = fmt(total);
   document.getElementById('c-func').textContent  = funcsActivos;
 
   const porFunc = {};
-  consumos.forEach(c => {
+  DB.consumos.forEach(c => {
     if (!porFunc[c.nombre]) porFunc[c.nombre] = { cnt:0, total:0 };
     porFunc[c.nombre].cnt++; porFunc[c.nombre].total += c.monto;
   });
@@ -468,19 +622,21 @@ function renderCliente() {
   document.getElementById('tabla-cliente').innerHTML = Object.keys(porFunc).length === 0
     ? `<tr><td colspan="3" class="empty-state">Sin datos aún.</td></tr>`
     : Object.entries(porFunc).map(([n,d]) =>
-        `<tr>
-          <td style="font-weight:500;">${n}</td>
-          <td>${d.cnt}</td>
-          <td style="font-weight:600;color:var(--orange);">Gs.${fmt(d.total)}</td>
-        </tr>`).join('');
+        `<tr><td style="font-weight:500;">${n}</td><td>${d.cnt}</td><td style="font-weight:600;color:var(--orange);">Gs.${fmt(d.total)}</td></tr>`
+      ).join('');
 
-  document.getElementById('tabla-cliente-det').innerHTML = consumos.length === 0
+  document.getElementById('tabla-cliente-det').innerHTML = DB.consumos.length === 0
     ? `<tr><td colspan="4" class="empty-state">Sin consumos aún.</td></tr>`
-    : consumos.slice(0,8).map(c =>
+    : DB.consumos.slice(0,8).map(c =>
         `<tr>
           <td style="color:var(--text3);font-weight:500;">${c.hora}</td>
-          <td>${c.nombre.split(' ')[0]}</td>
+          <td>${c.nombre ? c.nombre.split(' ')[0] : '—'}</td>
           <td>${getNombre(c)}</td>
           <td style="font-weight:600;color:var(--orange);">Gs.${fmt(c.monto)}</td>
-        </tr>`).join('');
+        </tr>`
+      ).join('');
 }
+
+// ── INIT ─────────────────────────────────────────────────
+renderAdmin();
+renderStock();
