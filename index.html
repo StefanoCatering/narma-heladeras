@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>närma · heladeras</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css"/>
+  <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+<div class="app">
+
+  <!-- Gráfismo decorativo Närma -->
+  <svg class="grafismo-corner" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="60" cy="60" r="55" fill="#082B55"/>
+    <ellipse cx="40" cy="50" rx="22" ry="30" fill="#FF3D03" transform="rotate(-20 40 50)"/>
+    <ellipse cx="80" cy="70" rx="18" ry="25" fill="#00795E" transform="rotate(15 80 70)"/>
+    <line x1="10" y1="10" x2="50" y2="50" stroke="#F5A72D" stroke-width="4" stroke-linecap="round"/>
+    <line x1="70" y1="20" x2="110" y2="60" stroke="#F5A72D" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="90" cy="30" r="8" fill="#F17F97"/>
+  </svg>
+
+  <!-- ── NAV ── -->
+  <div class="nav">
+    <span class="nav-logo">när<span>ma</span></span>
+    <button class="nav-btn active" onclick="switchView('qr',this)">&#x2022; Formulario</button>
+    <button class="nav-btn" onclick="switchView('admin',this)">&#x2022; Admin</button>
+    <button class="nav-btn" onclick="switchView('cliente',this)">&#x2022; Cliente</button>
+  </div>
+
+  <!-- ══════════════ QR VIEW ══════════════ -->
+  <div id="view-qr" class="view active">
+
+    <div class="qr-hero">
+      <div class="qr-hero-label">Heladera · <span class="js-heladera"></span></div>
+      <div class="qr-hero-title">comé sano<br><span>y rico</span></div>
+      <div class="qr-hero-deco">
+        <svg width="70" height="70" viewBox="0 0 70 70" fill="none">
+          <line x1="35" y1="4"  x2="35" y2="66" stroke="#F0EBE7" stroke-width="3" stroke-linecap="round"/>
+          <line x1="4"  y1="35" x2="66" y2="35" stroke="#F0EBE7" stroke-width="3" stroke-linecap="round"/>
+          <line x1="12" y1="12" x2="58" y2="58" stroke="#F0EBE7" stroke-width="3" stroke-linecap="round"/>
+          <line x1="58" y1="12" x2="12" y2="58" stroke="#F0EBE7" stroke-width="3" stroke-linecap="round"/>
+          <circle cx="35" cy="35" r="6" fill="#FF3D03"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- STEP: cédula -->
+    <div id="step-cedula">
+      <div class="card">
+        <div class="card-title">ingresá tu cédula</div>
+        <div class="form-group">
+          <label class="form-label">Número de cédula</label>
+          <input type="tel" id="cedula-input" placeholder="Ej: 4.567.890"/>
+        </div>
+        <button class="btn-primary" onclick="buscarFuncionario()">Continuar →</button>
+        <p style="font-size:10px;color:var(--text3);margin-top:12px;text-align:center;">
+          ¿Primera vez? <span class="link" onclick="irRegistro()">Registrarse aquí</span>
+        </p>
+      </div>
+    </div>
+
+    <!-- STEP: registro -->
+    <div id="step-registro" style="display:none;">
+      <div class="card">
+        <div class="card-title">primer registro</div>
+        <div class="form-group">
+          <label class="form-label">Nombre completo</label>
+          <input type="text" id="reg-nombre" placeholder="Lucía González"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Cédula</label>
+          <input type="tel" id="reg-cedula" placeholder="4.567.890"/>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email corporativo</label>
+          <input type="email" id="reg-mail" placeholder="lucia@empresa.com"/>
+        </div>
+        <button class="btn-primary" onclick="registrar()">Registrarse →</button>
+        <p style="font-size:10px;color:var(--text3);margin-top:10px;text-align:center;">
+          <span class="link" onclick="volverCedula()">← Volver</span>
+        </p>
+      </div>
+    </div>
+
+    <!-- STEP: items -->
+    <div id="step-items" style="display:none;">
+      <div class="card" style="padding:12px 16px;margin-bottom:10px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div class="avatar" id="qr-avatar">--</div>
+          <div>
+            <div style="font-weight:600;font-size:13px;" id="qr-nombre">—</div>
+            <div style="font-size:10px;color:var(--text3);margin-top:2px;" id="qr-empresa"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">
+          ¿qué tomaste hoy?
+          <span style="font-weight:400;color:var(--text3);text-transform:none;letter-spacing:0;">(podés elegir varios)</span>
+        </div>
+        <div class="item-grid" id="item-grid"></div>
+        <div id="confirm-area" style="display:none;">
+          <div class="divider"></div>
+          <div class="confirm-box">
+            <div style="font-size:9px;font-weight:600;color:var(--text3);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px;">Tu selección</div>
+            <div class="confirm-items-list" id="confirm-items-list"></div>
+            <div class="confirm-total">
+              <span>Total</span>
+              <span id="confirm-total">Gs. 0</span>
+            </div>
+          </div>
+          <button class="btn-primary" onclick="confirmar()">Confirmar consumo →</button>
+        </div>
+        <div class="success-msg" id="qr-success">
+          <div style="font-size:28px;margin-bottom:4px;">✓</div>
+          ¡registrado!<br>
+          <span style="font-size:10px;font-weight:400;opacity:0.85;">Tu consumo fue anotado correctamente.</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════ ADMIN VIEW ══════════════ -->
+  <div id="view-admin" class="view">
+
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <line x1="14" y1="2"  x2="14" y2="26" stroke="#FF3D03" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="2"  y1="14" x2="26" y2="14" stroke="#FF3D03" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="5"  y1="5"  x2="23" y2="23" stroke="#FF3D03" stroke-width="2.5" stroke-linecap="round"/>
+        <line x1="23" y1="5"  x2="5"  y2="23" stroke="#FF3D03" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>
+      <span style="font-size:12px;font-weight:600;color:var(--navy);">panel närma</span>
+    </div>
+
+    <div class="tab-row">
+      <div class="tab active" onclick="switchTab('resumen',this)">Resumen</div>
+      <div class="tab" onclick="switchTab('consumos',this)">Consumos</div>
+      <div class="tab" onclick="switchTab('stock',this)">Stock</div>
+      <div class="tab" onclick="switchTab('funcionarios',this)">Funcionarios</div>
+    </div>
+
+    <div id="tab-resumen">
+      <div class="metric-grid">
+        <div class="metric"><div class="metric-label">Consumos hoy</div><div class="metric-value" id="m-hoy">0</div><div class="metric-sub">transacciones</div></div>
+        <div class="metric"><div class="metric-label">Ingreso hoy</div><div class="metric-value" id="m-ing">0</div><div class="metric-sub">Gs.</div></div>
+        <div class="metric"><div class="metric-label">Ticket prom.</div><div class="metric-value" id="m-ticket">0</div><div class="metric-sub">Gs.</div></div>
+        <div class="metric"><div class="metric-label">Funcionarios</div><div class="metric-value" id="m-func">0</div><div class="metric-sub">registrados</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">pace vs. modelo financiero</div>
+        <table>
+          <thead><tr><th>Escenario</th><th>Uds/día</th><th>EBITDA/mes</th><th></th></tr></thead>
+          <tbody>
+            <tr><td>Breakeven</td><td>8,3</td><td>Gs. 0</td><td><span class="badge badge-neutral">Mínimo</span></td></tr>
+            <tr><td>Base</td><td>10</td><td>Gs. 317.930</td><td><span class="badge badge-info">Objetivo</span></td></tr>
+            <tr><td>Alto</td><td>13</td><td>Gs. 876.884</td><td><span class="badge badge-success">Óptimo</span></td></tr>
+            <tr style="background:var(--beige);"><td style="font-weight:600;">Hoy</td><td id="pace-dia">0</td><td id="pace-ebitda">—</td><td><span class="badge" id="pace-badge">—</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card">
+        <div class="card-title">consumos por categoría</div>
+        <div id="cat-chart"><div class="empty-state">Sin consumos aún.</div></div>
+      </div>
+    </div>
+
+    <div id="tab-consumos" style="display:none;">
+      <div class="filter-row">
+        <select id="filtro-cat" onchange="renderConsumos()">
+          <option value="">Todas las categorías</option>
+          <option>Wraps</option><option>Ensaladas</option>
+          <option>Sándwiches</option><option>Dulces</option><option>Bebidas</option>
+        </select>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden;">
+        <table>
+          <thead><tr><th>Hora</th><th>Funcionario</th><th>Cat.</th><th>Producto</th><th>Gs.</th></tr></thead>
+          <tbody id="tabla-consumos"><tr><td colspan="5" class="empty-state">Sin consumos aún.</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="tab-stock" style="display:none;">
+      <div class="nota">
+        <i class="ti ti-info-circle" style="flex-shrink:0;font-size:16px;"></i>
+        Stock cargado al inicio de la semana. Se descuenta automáticamente con cada consumo.
+      </div>
+      <div class="card" style="padding:0;overflow:hidden;">
+        <table>
+          <thead><tr><th>Producto</th><th>Cat.</th><th>Precio</th><th>Inicial</th><th>Vendido</th><th>Disp.</th><th>Estado</th></tr></thead>
+          <tbody id="tabla-stock"></tbody>
+        </table>
+      </div>
+      <div class="btn-row">
+        <button class="btn-secondary" style="flex:1;"><i class="ti ti-alert-triangle"></i> Ver alertas</button>
+        <button class="btn-secondary" style="flex:1;"><i class="ti ti-refresh"></i> Registrar recarga</button>
+      </div>
+    </div>
+
+    <div id="tab-funcionarios" style="display:none;">
+      <div class="card" style="padding:0;overflow:hidden;">
+        <table>
+          <thead><tr><th>Nombre</th><th>Cédula</th><th>Email</th><th>Consumos</th><th>Total Gs.</th></tr></thead>
+          <tbody id="tabla-func"><tr><td colspan="5" class="empty-state">Sin funcionarios aún.</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ CLIENTE VIEW ══════════════ -->
+  <div id="view-cliente" class="view">
+
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+      <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+        <ellipse cx="14" cy="14" rx="12" ry="12" fill="#082B55"/>
+        <ellipse cx="10" cy="12" rx="5" ry="7" fill="#FF3D03" transform="rotate(-15 10 12)"/>
+        <ellipse cx="19" cy="16" rx="4" ry="6" fill="#00795E" transform="rotate(10 19 16)"/>
+      </svg>
+      <span style="font-size:12px;font-weight:600;color:var(--navy);">vista cliente</span>
+      <span style="font-size:9px;background:var(--beige);border:1px solid var(--border);border-radius:100px;padding:3px 9px;color:var(--text3);font-weight:600;letter-spacing:0.04em;">ACCESO RESTRINGIDO</span>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;background:var(--navy);border-radius:var(--radius-lg);padding:14px 16px;">
+      <div class="avatar" style="font-size:13px;" id="cliente-avatar"></div>
+      <div>
+        <div style="font-weight:600;font-size:13px;color:var(--beige);" id="cliente-nombre"></div>
+        <div style="font-size:10px;color:rgba(240,235,231,0.5);margin-top:2px;">Semana en curso · Heladera <span class="js-heladera"></span></div>
+      </div>
+    </div>
+
+    <div class="metric-grid">
+      <div class="metric"><div class="metric-label">Consumos semana</div><div class="metric-value" id="c-cons">0</div></div>
+      <div class="metric"><div class="metric-label">Total a pagar</div><div class="metric-value" id="c-total">0</div><div class="metric-sub">Gs. · vence viernes</div></div>
+      <div class="metric"><div class="metric-label">Funcionarios</div><div class="metric-value" id="c-func">0</div><div class="metric-sub">activos</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">detalle por funcionario</div>
+      <table>
+        <thead><tr><th>Funcionario</th><th>Consumos</th><th>Total Gs.</th></tr></thead>
+        <tbody id="tabla-cliente"><tr><td colspan="3" class="empty-state">Sin datos aún.</td></tr></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <div class="card-title">últimos consumos</div>
+      <table>
+        <thead><tr><th>Hora</th><th>Funcionario</th><th>Producto</th><th>Gs.</th></tr></thead>
+        <tbody id="tabla-cliente-det"><tr><td colspan="4" class="empty-state">Sin consumos aún.</td></tr></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <div class="card-title">historial semanal</div>
+      <table>
+        <thead><tr><th>Semana</th><th>Consumos</th><th>Total Gs.</th><th>Estado</th></tr></thead>
+        <tbody><tr><td>Semana anterior</td><td>—</td><td>—</td><td><span class="badge badge-neutral">Sin datos</span></td></tr></tbody>
+      </table>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Scripts: primero config, luego app -->
+<script src="config.js"></script>
+<script src="app.js"></script>
+
+<!-- Completar elementos dinámicos desde CONFIG -->
+<script>
+  document.getElementById('qr-empresa').textContent    = CONFIG.nombreEmpresa;
+  document.getElementById('cliente-nombre').textContent = CONFIG.nombreEmpresa;
+  document.getElementById('cliente-avatar').textContent = CONFIG.iniciales;
+</script>
+
+</body>
+</html>
