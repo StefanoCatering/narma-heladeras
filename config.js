@@ -1,51 +1,76 @@
 // ═══════════════════════════════════════════════════════
 //  NÄRMA HELADERAS — CONFIG
-//  Este es el único archivo que necesitás tocar para
-//  personalizar el sistema sin saber programar.
+//  Editá este archivo para personalizar el sistema.
 // ═══════════════════════════════════════════════════════
 
 const CONFIG = {
 
   // ── MARCA ──────────────────────────────────────────
-  nombreMarca:   "närma",
-  tagline:       "viandas saludables",
+  nombreMarca:    "närma",
+  tagline:        "viandas saludables",
   nombreHeladera: "H-01",
 
-  // ── EMPRESA CLIENTE (cambiar por cada cliente) ─────
+  // ── EMPRESA CLIENTE ────────────────────────────────
   nombreEmpresa: "Empresa Piloto S.A.",
   iniciales:     "EP",
 
+  // ── USUARIOS Y ROLES ───────────────────────────────
+  // Para cambiar una contraseña: editá el campo "pass".
+  // Para agregar un cliente nuevo: copiá el bloque
+  // { usuario, pass, rol, empresa } y completalo.
+  //
+  // Roles disponibles: "admin" | "operador" | "cliente"
+  usuarios: [
+    {
+      usuario:  "narma.admin",
+      pass:     "narma2025",
+      rol:      "admin",
+      empresa:  null,           // admin ve todo
+      nombre:   "Admin Närma",
+    },
+    {
+      usuario:  "operador",
+      pass:     "recarga2025",
+      rol:      "operador",
+      empresa:  null,
+      nombre:   "Operador Recarga",
+    },
+    {
+      usuario:  "empresapiloto",
+      pass:     "piloto2025",
+      rol:      "cliente",
+      empresa:  "Empresa Piloto S.A.",
+      nombre:   "Empresa Piloto S.A.",
+    },
+  ],
+
   // ── COLORES DE MARCA ───────────────────────────────
-  // Para cambiar un color, reemplazá el valor entre comillas.
   colores: {
-    beige:   "#F0EBE7",   // fondo principal
-    beige2:  "#F4DFBD",   // fondo secundario
-    navy:    "#082B55",   // azul oscuro — nav, texto principal
-    navy2:   "#254EA9",   // azul medio — acentos
-    orange:  "#FF3D03",   // naranja — acción principal, botones
-    green:   "#00795E",   // verde — estados OK, éxito
-    green2:  "#BEDBD9",   // verde claro — fondos
-    yellow:  "#F5A72D",   // amarillo — alertas
-    pink:    "#F17F97",   // rosa — decorativo
+    beige:   "#F0EBE7",
+    beige2:  "#F4DFBD",
+    navy:    "#082B55",
+    navy2:   "#254EA9",
+    orange:  "#FF3D03",
+    green:   "#00795E",
+    green2:  "#BEDBD9",
+    yellow:  "#F5A72D",
+    pink:    "#F17F97",
   },
 
-  // ── MODELO FINANCIERO (del Excel) ──────────────────
-  // Estos valores vienen de tu planilla. Actualizalos si cambia el modelo.
+  // ── MODELO FINANCIERO ──────────────────────────────
   modelo: {
-    ticketPromedio:      18820,   // Gs. ticket promedio ponderado
-    cogsPorc:            0.55,    // % costo variable sobre precio venta
-    costosFijosMes:      1545250, // Gs. costos fijos mensuales (1 empresa)
-    diasHabilesMes:      22,
-    breakeven:           8.3,     // unidades/día mínimas
-    escenarioBase:       10,      // unidades/día escenario base
-    escenarioAlto:       13,      // unidades/día escenario alto
-    ebitdaBase:          317930,  // Gs. EBITDA escenario base
-    ebitdaAlto:          876884,  // Gs. EBITDA escenario alto
+    ticketPromedio:   18820,
+    cogsPorc:         0.55,
+    costosFijosMes:   1545250,
+    diasHabilesMes:   22,
+    breakeven:        8.3,
+    escenarioBase:    10,
+    escenarioAlto:    13,
+    ebitdaBase:       317930,
+    ebitdaAlto:       876884,
   },
 
   // ── CATÁLOGO DE PRODUCTOS ──────────────────────────
-  // Para agregar un producto: copiá un bloque { } y completá los datos.
-  // Para quitar un producto: borrá su bloque { }.
   catalogo: [
     { id:1,  nombre:"Wrap de Carne",             precio:35000, cat:"Wraps",      costo:25896, mix:0.03 },
     { id:2,  nombre:"Wrap Caesar",               precio:35000, cat:"Wraps",      costo:19925, mix:0.07 },
