@@ -109,20 +109,20 @@ body {
   height: 52px;
   display: block;
   margin: 0 auto 6px;
-  filter: brightness(0) invert(1) sepia(1) saturate(5) hue-rotate(335deg);
 }
 .nav-logo-img {
   height: 28px;
   display: block;
   margin-right: 10px;
   flex-shrink: 0;
-  filter: brightness(0) invert(1) sepia(1) saturate(5) hue-rotate(335deg);
+  background: #F0EBE7;
+  border-radius: 6px;
+  padding: 3px 8px;
 }
 .qr-logo-img {
   height: 22px;
   display: block;
-  filter: brightness(0) invert(1) sepia(1) saturate(5) hue-rotate(335deg);
-  opacity: 0.6;
+  opacity: 0.85;
 }
 .login-tagline {
   font-size: 9px;
