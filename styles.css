@@ -105,20 +105,16 @@ body {
   margin-bottom: 32px;
   position: relative;
 }
-.login-logo-img {
-  height: 52px;
-  display: block;
-  margin: 0 auto 6px;
+.login-logo {
+  font-family: var(--font);
+  font-size: 36px;
+  font-weight: 600;
+  color: var(--beige);
+  letter-spacing: -0.04em;
 }
-.nav-logo-img {
-  height: 28px;
-  display: block;
-  margin-right: 10px;
-  flex-shrink: 0;
-  background: #F0EBE7;
-  border-radius: 6px;
-  padding: 3px 8px;
-}
+.login-logo span { color: var(--orange); }
+.login-logo-img { display: none; }
+.nav-logo-img { display: none; }
 .qr-logo-img {
   height: 22px;
   display: block;
