@@ -139,6 +139,7 @@
     <button id="nav-btn-admin"    class="nav-btn" style="display:none;" onclick="switchView('admin',this)">Admin</button>
     <button id="nav-btn-cliente"  class="nav-btn" style="display:none;" onclick="switchView('cliente',this)">Mi empresa</button>
     <button id="nav-btn-operador" class="nav-btn" style="display:none;" onclick="switchView('operador',this)">Recarga</button>
+    <button id="nav-btn-aliado"   class="nav-btn" style="display:none;" onclick="switchView('aliado',this)">Panel aliado</button>
     <button id="nav-btn-qr"       class="nav-btn" style="display:none;" onclick="abrirQR()">
       <svg width="14" height="14" style="color:currentColor;vertical-align:-2px;margin-right:3px;"><use href="#g-estrella"/></svg>Formulario QR
     </button>
@@ -281,6 +282,50 @@
       <div class="card-title">historial semanal</div>
       <table><thead><tr><th>Semana</th><th>Consumos</th><th>Total Gs.</th><th>Estado</th></tr></thead>
         <tbody><tr><td>Semana anterior</td><td>—</td><td>—</td><td><span class="badge badge-neutral">Sin datos</span></td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── VISTA ALIADO ── -->
+  <div id="view-aliado" class="view">
+    <div class="view-header">
+      <svg width="22" height="22" style="color:var(--orange)"><use href="#g-puntos"/></svg>
+      <span class="view-header-title">panel aliado</span>
+      <span style="font-size:9px;color:var(--text3);margin-left:auto;" id="aliado-reloj">—</span>
+    </div>
+    <div class="metric-grid">
+      <div class="metric metric-orange"><div class="metric-label">Consumos hoy</div><div class="metric-value" id="al-cons">0</div></div>
+      <div class="metric metric-green"><div class="metric-label">Total hoy</div><div class="metric-value" id="al-total">0</div><div class="metric-sub">Gs.</div></div>
+      <div class="metric metric-blue"><div class="metric-label">Funcionarios</div><div class="metric-value" id="al-func">0</div><div class="metric-sub">activos hoy</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
+        consumos del día
+        <span style="display:flex;align-items:center;gap:5px;font-size:9px;color:var(--green);font-weight:600;">
+          <span style="width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block;"></span>
+          en vivo · cada 20 seg
+        </span>
+      </div>
+      <table>
+        <thead><tr><th>Hora</th><th>Funcionario</th><th>Producto</th><th>Gs.</th></tr></thead>
+        <tbody id="al-tabla-consumos"><tr><td colspan="4" class="empty-state">Sin consumos hoy.</td></tr></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <div class="card-title">stock actual de la heladera</div>
+      <table>
+        <thead><tr><th>Producto</th><th>Disponible</th><th>Estado</th></tr></thead>
+        <tbody id="al-tabla-stock"></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
+        resumen semanal
+        <span style="font-size:11px;font-weight:600;color:var(--orange);">Gs. <span id="al-total-semana">0</span></span>
+      </div>
+      <table>
+        <thead><tr><th>Funcionario</th><th style="text-align:center;">Consumos</th><th>Total Gs.</th></tr></thead>
+        <tbody id="al-tabla-semana"><tr><td colspan="3" class="empty-state">Sin datos.</td></tr></tbody>
       </table>
     </div>
   </div>

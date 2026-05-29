@@ -259,9 +259,10 @@ function iniciarApp() {
   const btnAdmin    = document.getElementById('nav-btn-admin');
   const btnCliente  = document.getElementById('nav-btn-cliente');
   const btnOperador = document.getElementById('nav-btn-operador');
+  const btnAliado   = document.getElementById('nav-btn-aliado');
   const btnQR       = document.getElementById('nav-btn-qr');
 
-  [btnAdmin, btnCliente, btnOperador, btnQR].forEach(b => b.style.display = 'none');
+  [btnAdmin, btnCliente, btnOperador, btnAliado, btnQR].forEach(b => b.style.display = 'none');
 
   if (SESSION.rol === 'admin') {
     btnAdmin.style.display = 'inline-flex';
@@ -278,6 +279,11 @@ function iniciarApp() {
     btnOperador.style.display = 'inline-flex';
     document.getElementById('screen-app').style.display = 'block';
     switchView('operador', btnOperador);
+  } else if (SESSION.rol === 'aliado') {
+    btnAliado.style.display = 'inline-flex';
+    document.getElementById('screen-app').style.display = 'block';
+    switchView('aliado', btnAliado);
+    iniciarAutoRefresh();
   }
 }
 
@@ -293,6 +299,90 @@ function switchView(v, btn) {
   if (v === 'admin')    renderAdmin();
   if (v === 'cliente')  renderCliente();
   if (v === 'operador') renderOperador();
+  if (v === 'aliado')   renderAliado();
+}
+
+// ── AUTO-REFRESH para aliado ──────────────────────────────
+let refreshInterval = null;
+
+function iniciarAutoRefresh() {
+  if (refreshInterval) clearInterval(refreshInterval);
+  refreshInterval = setInterval(async () => {
+    await cargarDatosDesdeSheets();
+    renderAliado();
+    actualizarReloj();
+  }, 20000); // cada 20 segundos
+}
+
+function actualizarReloj() {
+  const el = document.getElementById('aliado-reloj');
+  if (el) el.textContent = 'Última actualización: ' + new Date().toLocaleTimeString('es-PY', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+}
+
+// ── RENDER ALIADO ─────────────────────────────────────────
+function renderAliado() {
+  // ── Consumos del día ──
+  const hoy = new Date().toLocaleDateString('es-PY');
+  const consumosHoy = DB.consumos; // cuando haya multi-empresa filtrar por fecha
+  const totalHoy = consumosHoy.reduce((a,c) => a + c.monto, 0);
+
+  document.getElementById('al-cons').textContent  = consumosHoy.length;
+  document.getElementById('al-total').textContent = fmt(totalHoy);
+  document.getElementById('al-func').textContent  = [...new Set(consumosHoy.map(c => c.cedula))].length;
+
+  // Tabla consumos del día
+  document.getElementById('al-tabla-consumos').innerHTML = consumosHoy.length === 0
+    ? `<tr><td colspan="4" class="empty-state">Sin consumos registrados hoy.</td></tr>`
+    : consumosHoy.map(c => `<tr>
+        <td style="font-weight:600;color:var(--orange);">${c.hora}</td>
+        <td><div style="display:flex;align-items:center;gap:6px;">
+          <div class="avatar" style="width:22px;height:22px;font-size:9px;">${initials(c.nombre||'?')}</div>
+          <span style="font-weight:500;">${c.nombre ? c.nombre.split(' ')[0] : '—'}</span>
+        </div></td>
+        <td>${getNombre(c)}</td>
+        <td style="font-weight:600;color:var(--orange);">Gs.${fmt(c.monto)}</td>
+      </tr>`).join('');
+
+  // ── Stock actual ──
+  document.getElementById('al-tabla-stock').innerHTML = CONFIG.catalogo.map(it => {
+    const disp = DB.stock[it.id] || 0;
+    const pct  = Math.round(disp / STOCK_INICIAL[it.id] * 100);
+    let cls, lbl;
+    if (pct > 50)      { cls = 'badge-success'; lbl = 'OK'; }
+    else if (pct > 20) { cls = 'badge-warning'; lbl = 'Bajo'; }
+    else               { cls = 'badge-danger';  lbl = 'Reponer'; }
+    const color = pct > 50 ? '#00795E' : pct > 20 ? '#F5A72D' : '#FF3D03';
+    return `<tr>
+      <td style="font-weight:500;">${it.nombre}</td>
+      <td><strong style="font-size:15px;">${disp}</strong> <span style="color:var(--text3);font-size:10px;">/ ${STOCK_INICIAL[it.id]}</span>
+        <div class="stock-bar"><div class="stock-fill" style="width:${pct}%;background:${color};"></div></div>
+      </td>
+      <td><span class="badge ${cls}">${lbl}</span></td>
+    </tr>`;
+  }).join('');
+
+  // ── Resumen semanal por funcionario ──
+  const porFunc = {};
+  DB.consumos.forEach(c => {
+    if (!porFunc[c.nombre]) porFunc[c.nombre] = { cnt: 0, total: 0 };
+    porFunc[c.nombre].cnt++;
+    porFunc[c.nombre].total += c.monto;
+  });
+  const totalSemana = DB.consumos.reduce((a,c) => a + c.monto, 0);
+  document.getElementById('al-total-semana').textContent = fmt(totalSemana);
+  document.getElementById('al-tabla-semana').innerHTML = Object.keys(porFunc).length === 0
+    ? `<tr><td colspan="3" class="empty-state">Sin consumos esta semana.</td></tr>`
+    : Object.entries(porFunc).sort((a,b) => b[1].total - a[1].total).map(([n,d]) =>
+        `<tr>
+          <td><div style="display:flex;align-items:center;gap:6px;">
+            <div class="avatar" style="width:22px;height:22px;font-size:9px;">${initials(n||'?')}</div>
+            <span style="font-weight:500;">${n}</span>
+          </div></td>
+          <td style="text-align:center;">${d.cnt}</td>
+          <td style="font-weight:600;color:var(--orange);">Gs.${fmt(d.total)}</td>
+        </tr>`).join('');
+
+  actualizarReloj();
 }
 
 function switchTab(t, el) {

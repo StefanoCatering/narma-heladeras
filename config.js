@@ -36,11 +36,18 @@ const CONFIG = {
       nombre:   "Operador Recarga",
     },
     {
-      usuario:  "empresapiloto",
-      pass:     "piloto2025",
-      rol:      "cliente",
+      usuario:  "aliado.piloto",
+      pass:     "aliado2025",
+      rol:      "aliado",
       empresa:  "Empresa Piloto S.A.",
-      nombre:   "Empresa Piloto S.A.",
+      nombre:   "Aliado — Empresa Piloto",
+    },
+    {
+      usuario:  "secretaria",
+      pass:     "secretaria2025",
+      rol:      "secretaria",
+      empresa:  "Empresa Piloto S.A.",
+      nombre:   "Secretaria",
     },
   ],
 
