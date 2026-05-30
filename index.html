@@ -185,6 +185,10 @@
         <div class="card-title">consumos por categoría</div>
         <div id="cat-chart"><div class="empty-state">Sin consumos aún.</div></div>
       </div>
+      <div class="card">
+        <div class="card-title">períodos de facturación por empresa</div>
+        <div id="admin-periodos"><div class="empty-state">Cargando...</div></div>
+      </div>
     </div>
 
     <div id="tab-consumos" style="display:none;">
@@ -261,10 +265,11 @@
     </div>
 
     <div class="metric-grid">
-      <div class="metric metric-orange"><div class="metric-label">Consumos semana</div><div class="metric-value" id="c-cons">0</div></div>
-      <div class="metric metric-green"><div class="metric-label">Total a pagar</div><div class="metric-value" id="c-total">0</div><div class="metric-sub">Gs. · vence viernes</div></div>
+      <div class="metric metric-orange"><div class="metric-label">Consumos período</div><div class="metric-value" id="c-cons">0</div></div>
+      <div class="metric metric-green"><div class="metric-label">Total a pagar</div><div class="metric-value" id="c-total">0</div><div class="metric-sub">Gs. · vence al cierre</div></div>
       <div class="metric metric-blue"><div class="metric-label">Funcionarios</div><div class="metric-value" id="c-func">0</div><div class="metric-sub">activos</div></div>
     </div>
+    <div class="nota" id="c-periodo-info" style="font-size:11px;">Cargando período...</div>
 
     <div class="card">
       <div class="card-title">detalle por funcionario</div>

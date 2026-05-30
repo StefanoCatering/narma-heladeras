@@ -40,6 +40,7 @@ const DB = {
   funcionarios: [],
   stock: JSON.parse(JSON.stringify(STOCK_INICIAL)),
   consumos: [],
+  periodos: [],
   cargado: false,
 };
 
@@ -181,6 +182,16 @@ async function cargarDatosDesdeSheets() {
       if (id) DB.stock[id] = parseInt(r[2]) || 0;
     });
 
+    // Períodos
+    const pRows = await sheetsRead('periodos!A2:E');
+    DB.periodos = pRows.map(r => ({
+      empresa:       r[0] || '',
+      fecha_inicio:  r[1] || '',
+      fecha_cierre:  r[2] || '',
+      estado:        r[3] || 'abierto',
+      total:         parseInt(r[4]) || 0,
+    }));
+
     DB.cargado = true;
   } catch(e) {
     console.error('Error cargando Sheets:', e);
@@ -200,8 +211,64 @@ async function inicializarStockEnSheets() {
   }
 }
 
+// ── UTILS DE PERÍODOS ────────────────────────────────────
+function getPeriodoActivo(empresa) {
+  return DB.periodos.find(p => p.empresa === empresa && p.estado === 'abierto');
+}
+
+function getConsumosPeriodo(empresa, periodo) {
+  if (!periodo) return [];
+  const inicio = new Date(periodo.fecha_inicio.split('/').reverse().join('-'));
+  return DB.consumos.filter(c => {
+    if (empresa && c.nombre) {
+      const f = DB.funcionarios.find(f => f.cedula === c.cedula);
+      // si hay empresa definida filtrar — por ahora todos van a la misma empresa
+    }
+    // Filtrar por fecha de inicio del período
+    try {
+      const parts = c.hora.split(',')[0].split('/');
+      if (parts.length === 3) {
+        const cDate = new Date(`20${parts[2].trim()}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`);
+        return cDate >= inicio;
+      }
+    } catch(e) {}
+    return true;
+  });
+}
+
+async function cerrarPeriodo(empresa) {
+  const periodo = getPeriodoActivo(empresa);
+  if (!periodo) { alert('No hay período abierto para esta empresa.'); return; }
+
+  const fechaCierre = prompt('Ingresá la fecha de cierre (DD/MM/AAAA):', new Date().toLocaleDateString('es-PY'));
+  if (!fechaCierre) return;
+
+  const consumosPeriodo = getConsumosPeriodo(empresa, periodo);
+  const totalPeriodo = consumosPeriodo.reduce((a,c) => a+c.monto, 0);
+
+  // Actualizar período actual como pagado
+  const rowIdx = DB.periodos.indexOf(periodo) + 2; // +2 por header
+  try {
+    await sheetsUpdate(`periodos!A${rowIdx}:E${rowIdx}`, [[
+      empresa, periodo.fecha_inicio, fechaCierre, 'pagado', totalPeriodo
+    ]]);
+    periodo.fecha_cierre = fechaCierre;
+    periodo.estado = 'pagado';
+    periodo.total = totalPeriodo;
+
+    // Crear nuevo período abierto
+    const nuevaFechaInicio = fechaCierre; // empieza el mismo día del cierre
+    await sheetsAppend('periodos', [empresa, nuevaFechaInicio, '', 'abierto', '']);
+    DB.periodos.push({ empresa, fecha_inicio: nuevaFechaInicio, fecha_cierre: '', estado: 'abierto', total: 0 });
+
+    alert(`✓ Período cerrado. Total: Gs. ${fmt(totalPeriodo)}\nNuevo período iniciado desde ${nuevaFechaInicio}.`);
+    renderAdmin();
+  } catch(e) {
+    alert('Error cerrando período. Verificá tu conexión.');
+  }
+}
+
 // ══════════════════════════════════════════════════════════
-//  LOGIN
 // ══════════════════════════════════════════════════════════
 
 function mostrarLogin() {
@@ -590,6 +657,45 @@ function renderAdmin() {
           </div>
         </div>`;
       }).join('');
+
+  // Períodos por empresa
+  const empresas = [...new Set(DB.periodos.map(p => p.empresa))];
+  const periodoHTML = empresas.length === 0
+    ? `<div class="empty-state">Sin períodos configurados.</div>`
+    : empresas.map(emp => {
+        const periodoActivo = getPeriodoActivo(emp);
+        const consumosPer   = periodoActivo ? getConsumosPeriodo(emp, periodoActivo) : [];
+        const totalPer      = consumosPer.reduce((a,c) => a+c.monto, 0);
+        const historicos    = DB.periodos.filter(p => p.empresa === emp && p.estado === 'pagado');
+        return `<div style="margin-bottom:14px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <div style="font-weight:600;font-size:12px;">${emp}</div>
+            ${periodoActivo ? `<button onclick="cerrarPeriodo('${emp}')" class="btn-secondary" style="font-size:10px;padding:5px 10px;background:var(--orange);color:white;border-color:var(--orange);">Cerrar período →</button>` : ''}
+          </div>
+          ${periodoActivo ? `
+            <div style="background:#FFF0EC;border:1px solid rgba(255,61,3,0.15);border-radius:var(--radius);padding:10px 12px;margin-bottom:8px;">
+              <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Período actual — desde ${periodoActivo.fecha_inicio}</div>
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:11px;">${consumosPer.length} consumos</span>
+                <span style="font-size:18px;font-weight:600;color:var(--orange);">Gs. ${fmt(totalPer)}</span>
+              </div>
+            </div>` : '<div class="empty-state">Sin período activo.</div>'}
+          ${historicos.length > 0 ? `
+            <table style="font-size:11px;">
+              <thead><tr><th>Inicio</th><th>Cierre</th><th>Total Gs.</th><th></th></tr></thead>
+              <tbody>${historicos.map(h => `
+                <tr>
+                  <td>${h.fecha_inicio}</td>
+                  <td>${h.fecha_cierre}</td>
+                  <td style="font-weight:600;">Gs.${fmt(h.total)}</td>
+                  <td><span class="badge badge-success">Pagado</span></td>
+                </tr>`).join('')}
+              </tbody>
+            </table>` : ''}
+        </div>`;
+      }).join('');
+
+  document.getElementById('admin-periodos').innerHTML = periodoHTML;
 }
 
 function renderConsumos() {
@@ -697,33 +803,55 @@ async function confirmarRecarga() {
 // ══════════════════════════════════════════════════════════
 
 function renderCliente() {
-  const total        = DB.consumos.reduce((a,c)=>a+c.monto,0);
-  const funcsActivos = [...new Set(DB.consumos.map(c=>c.cedula))].length;
+  const empresa       = SESSION ? SESSION.empresa : CONFIG.nombreEmpresa;
+  const periodoActivo = getPeriodoActivo(empresa);
+  const consumosPer   = periodoActivo ? getConsumosPeriodo(empresa, periodoActivo) : DB.consumos;
+  const total         = consumosPer.reduce((a,c)=>a+c.monto,0);
+  const funcsActivos  = [...new Set(consumosPer.map(c=>c.cedula))].length;
 
-  document.getElementById('c-cons').textContent  = DB.consumos.length;
+  document.getElementById('c-cons').textContent  = consumosPer.length;
   document.getElementById('c-total').textContent = fmt(total);
   document.getElementById('c-func').textContent  = funcsActivos;
 
+  const perInfo = document.getElementById('c-periodo-info');
+  if (perInfo) {
+    perInfo.innerHTML = periodoActivo
+      ? `Período desde <strong>${periodoActivo.fecha_inicio}</strong> · vence al cierre`
+      : `Sin período activo`;
+  }
+
   const porFunc = {};
-  DB.consumos.forEach(c => {
+  consumosPer.forEach(c => {
     if (!porFunc[c.nombre]) porFunc[c.nombre] = { cnt:0, total:0 };
     porFunc[c.nombre].cnt++; porFunc[c.nombre].total += c.monto;
   });
 
   document.getElementById('tabla-cliente').innerHTML = Object.keys(porFunc).length === 0
     ? `<tr><td colspan="3" class="empty-state">Sin datos aún.</td></tr>`
-    : Object.entries(porFunc).map(([n,d]) =>
+    : Object.entries(porFunc).sort((a,b)=>b[1].total-a[1].total).map(([n,d]) =>
         `<tr><td style="font-weight:500;">${n}</td><td>${d.cnt}</td><td style="font-weight:600;color:var(--orange);">Gs.${fmt(d.total)}</td></tr>`
       ).join('');
 
-  document.getElementById('tabla-cliente-det').innerHTML = DB.consumos.length === 0
+  document.getElementById('tabla-cliente-det').innerHTML = consumosPer.length === 0
     ? `<tr><td colspan="4" class="empty-state">Sin consumos aún.</td></tr>`
-    : DB.consumos.slice(0,8).map(c =>
+    : consumosPer.slice(0,10).map(c =>
         `<tr>
           <td style="color:var(--text3);font-weight:500;">${c.hora}</td>
           <td>${c.nombre ? c.nombre.split(' ')[0] : '—'}</td>
           <td>${getNombre(c)}</td>
           <td style="font-weight:600;color:var(--orange);">Gs.${fmt(c.monto)}</td>
+        </tr>`
+      ).join('');
+
+  const historicos = DB.periodos.filter(p => p.empresa === empresa && p.estado === 'pagado').reverse();
+  document.getElementById('tabla-hist').innerHTML = historicos.length === 0
+    ? `<tr><td colspan="4" class="empty-state">Sin períodos anteriores.</td></tr>`
+    : historicos.map(h =>
+        `<tr>
+          <td>${h.fecha_inicio} → ${h.fecha_cierre}</td>
+          <td>—</td>
+          <td style="font-weight:600;">Gs.${fmt(h.total)}</td>
+          <td><span class="badge badge-success">Pagado</span></td>
         </tr>`
       ).join('');
 }
