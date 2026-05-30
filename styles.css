@@ -496,7 +496,16 @@ input:focus, select:focus { border-color: var(--orange); background: white; }
   display: none; margin-top: 12px; line-height: 2;
 }
 
-/* ── BOTONES DE CONTACTO ─────────────────────────────── */
+.btn-historial {
+  display: block; width: 100%; padding: 11px;
+  background: transparent;
+  color: var(--navy);
+  border: 1.5px solid var(--border2);
+  border-radius: var(--radius);
+  font-size: 12px; font-weight: 500; font-family: var(--font);
+  cursor: pointer; margin-top: 8px; transition: all 0.15s;
+}
+.btn-historial:hover { background: var(--beige); border-color: var(--navy); }
 .btn-contacto {
   flex: 1;
   display: flex;

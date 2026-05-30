@@ -483,12 +483,13 @@ function cerrarQR() {
 function resetQR() {
   selectedItems = {};
   currentFunc   = null;
-  document.getElementById('step-cedula').style.display   = 'block';
-  document.getElementById('step-registro').style.display = 'none';
-  document.getElementById('step-items').style.display    = 'none';
-  document.getElementById('cedula-input').value          = '';
-  document.getElementById('qr-success').style.display   = 'none';
-  document.getElementById('confirm-area').style.display  = 'none';
+  document.getElementById('step-cedula').style.display    = 'block';
+  document.getElementById('step-registro').style.display  = 'none';
+  document.getElementById('step-historial').style.display = 'none';
+  document.getElementById('step-items').style.display     = 'none';
+  document.getElementById('cedula-input').value           = '';
+  document.getElementById('qr-success').style.display    = 'none';
+  document.getElementById('confirm-area').style.display   = 'none';
 }
 
 function buscarFuncionario() {
@@ -499,7 +500,44 @@ function buscarFuncionario() {
   else   { alert('Cédula no encontrada. Si es tu primera vez, registrate.'); irRegistro(); }
 }
 
-function irRegistro() {
+function verHistorial() {
+  const c = document.getElementById('cedula-input').value.replace(/\D/g,'');
+  if (!c) { alert('Ingresá tu cédula primero.'); return; }
+  const f = DB.funcionarios.find(x => x.cedula.replace(/\D/g,'') === c);
+  if (!f) { alert('Cédula no encontrada. Si es tu primera vez, registrate.'); return; }
+
+  // Mostrar step historial
+  document.getElementById('step-cedula').style.display    = 'none';
+  document.getElementById('step-historial').style.display = 'block';
+  document.getElementById('hist-avatar').textContent      = initials(f.nombre);
+  document.getElementById('hist-nombre').textContent      = f.nombre;
+
+  // Consumos del período
+  const empresa       = CONFIG.nombreEmpresa;
+  const periodoActivo = getPeriodoActivo(empresa);
+  const consumosFun   = periodoActivo
+    ? getConsumosPeriodo(empresa, periodoActivo).filter(c => c.cedula === f.cedula)
+    : DB.consumos.filter(c => c.cedula === f.cedula);
+  const total = consumosFun.reduce((a,c) => a+c.monto, 0);
+
+  document.getElementById('hist-periodo').textContent = periodoActivo
+    ? `Período desde ${periodoActivo.fecha_inicio}`
+    : 'Todos los consumos';
+  document.getElementById('hist-total').textContent = 'Gs. ' + fmt(total);
+
+  document.getElementById('hist-tabla').innerHTML = consumosFun.length === 0
+    ? `<tr><td colspan="3" class="empty-state">Sin consumos este período.</td></tr>`
+    : consumosFun.map(c => `<tr>
+        <td style="color:var(--text3);font-size:11px;">${c.hora}</td>
+        <td style="font-weight:500;">${getNombre(c)}</td>
+        <td style="font-weight:600;color:var(--orange);">Gs.${fmt(c.monto)}</td>
+      </tr>`).join('');
+}
+
+function volverDeHistorial() {
+  document.getElementById('step-historial').style.display = 'none';
+  document.getElementById('step-cedula').style.display    = 'block';
+}
   document.getElementById('step-cedula').style.display   = 'none';
   document.getElementById('step-registro').style.display = 'block';
 }

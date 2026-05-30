@@ -361,6 +361,28 @@
 
   <div style="padding:14px;">
 
+    <!-- STEP: historial -->
+    <div id="step-historial" style="display:none;">
+      <div class="qr-usuario-card">
+        <div class="avatar" id="hist-avatar">--</div>
+        <div>
+          <div class="qr-usuario-nombre" id="hist-nombre">—</div>
+          <div class="qr-usuario-sub" id="hist-periodo">—</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
+          mi historial de consumo
+          <span style="font-size:14px;font-weight:700;color:var(--orange);" id="hist-total">Gs. 0</span>
+        </div>
+        <table>
+          <thead><tr><th>Fecha / Hora</th><th>Producto</th><th>Gs.</th></tr></thead>
+          <tbody id="hist-tabla"><tr><td colspan="3" class="empty-state">Sin consumos aún.</td></tr></tbody>
+        </table>
+        <button class="btn-primary" onclick="volverDeHistorial()" style="margin-top:14px;">← Volver</button>
+      </div>
+    </div>
+
     <!-- STEP: cédula -->
     <div id="step-cedula">
       <div class="card">
@@ -370,6 +392,7 @@
           <input type="tel" id="cedula-input" placeholder="Ej: 4.567.890"/>
         </div>
         <button class="btn-primary" onclick="buscarFuncionario()">Continuar →</button>
+        <button class="btn-historial" onclick="verHistorial()">Ver mi historial de consumo</button>
         <p style="font-size:10px;color:var(--text3);margin-top:12px;text-align:center;">
           ¿Primera vez? <span class="link-naranja" onclick="irRegistro()">Registrarse aquí</span>
         </p>
