@@ -536,6 +536,22 @@ function mostrarItems() {
   document.getElementById('step-items').style.display    = 'block';
   document.getElementById('qr-nombre').textContent       = currentFunc.nombre;
   document.getElementById('qr-avatar').textContent       = initials(currentFunc.nombre);
+
+  // Mostrar acumulado del período
+  const empresa       = CONFIG.nombreEmpresa;
+  const periodoActivo = getPeriodoActivo(empresa);
+  const consumosFun   = periodoActivo
+    ? getConsumosPeriodo(empresa, periodoActivo).filter(c => c.cedula === currentFunc.cedula)
+    : DB.consumos.filter(c => c.cedula === currentFunc.cedula);
+  const totalFun = consumosFun.reduce((a,c) => a+c.monto, 0);
+
+  const subEl = document.getElementById('qr-acumulado');
+  if (subEl) {
+    subEl.textContent = consumosFun.length > 0
+      ? `Acumulado del período: Gs. ${fmt(totalFun)}`
+      : 'Sin consumos este período';
+  }
+
   renderItemGrid();
   actualizarConfirm();
 }
@@ -605,12 +621,50 @@ async function confirmar() {
 
   document.getElementById('item-grid').style.display    = 'none';
   document.getElementById('confirm-area').style.display = 'none';
-  document.getElementById('qr-success').style.display   = 'block';
+
+  // Calcular resumen del período para este funcionario
+  const empresa       = CONFIG.nombreEmpresa;
+  const periodoActivo = getPeriodoActivo(empresa);
+  const consumosFuncionario = DB.consumos.filter(c => c.cedula === currentFunc.cedula);
+  const consumosPeriodo = periodoActivo
+    ? getConsumosPeriodo(empresa, periodoActivo).filter(c => c.cedula === currentFunc.cedula)
+    : consumosFuncionario;
+  const totalPeriodo = consumosPeriodo.reduce((a,c) => a+c.monto, 0);
+  const totalHoy     = ids.reduce((a,id) => a + getItem(id).precio, 0);
+
+  // Construir pantalla de éxito con resumen
+  const successEl = document.getElementById('qr-success');
+  successEl.innerHTML = `
+    <svg width="28" height="28" style="color:white;display:block;margin:0 auto 8px"><use href="#g-estrella"/></svg>
+    <div style="font-size:15px;font-weight:600;margin-bottom:4px;">¡Registrado!</div>
+    <div style="font-size:10px;font-weight:400;opacity:0.8;margin-bottom:16px;">Tu consumo fue anotado correctamente.</div>
+    <div style="background:rgba(255,255,255,0.12);border-radius:10px;padding:12px;margin-bottom:12px;text-align:left;">
+      <div style="font-size:9px;opacity:0.6;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Lo que tomaste hoy</div>
+      ${ids.map(id => {
+        const it = getItem(id);
+        return `<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.1);">
+          <span>${it.nombre}</span>
+          <span style="font-weight:600;">Gs.${fmt(it.precio)}</span>
+        </div>`;
+      }).join('')}
+      <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;margin-top:8px;">
+        <span>Total hoy</span><span>Gs.${fmt(totalHoy)}</span>
+      </div>
+    </div>
+    <div style="background:rgba(255,255,255,0.08);border-radius:10px;padding:12px;">
+      <div style="font-size:9px;opacity:0.6;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Tu acumulado del período</div>
+      <div style="font-size:22px;font-weight:700;">Gs.${fmt(totalPeriodo)}</div>
+      <div style="font-size:10px;opacity:0.6;margin-top:3px;">${consumosPeriodo.length} consumo${consumosPeriodo.length!==1?'s':''} desde ${periodoActivo ? periodoActivo.fecha_inicio : 'el inicio'}</div>
+    </div>
+    <div style="margin-top:14px;font-size:10px;opacity:0.5;">Esta pantalla se cerrará en unos segundos</div>
+  `;
+  successEl.style.display = 'block';
+
   setTimeout(() => {
-    document.getElementById('qr-success').style.display  = 'none';
+    successEl.style.display  = 'none';
     document.getElementById('item-grid').style.display   = 'grid';
     resetQR();
-  }, 2800);
+  }, 6000);
 }
 
 // ══════════════════════════════════════════════════════════
