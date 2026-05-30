@@ -496,9 +496,24 @@ input:focus, select:focus { border-color: var(--orange); background: white; }
   display: none; margin-top: 12px; line-height: 2;
 }
 
-/* ══════════════════════════════════════════════════════
-   CLIENTE HEADER
-   ══════════════════════════════════════════════════════ */
+/* ── BOTONES DE CONTACTO ─────────────────────────────── */
+.btn-contacto {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px;
+  border-radius: var(--radius);
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font);
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+.btn-contacto:hover { opacity: 0.85; }
+.btn-wa { background: #25D366; color: white; }
+.btn-ig { background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); color: white; }
 .cliente-header-card {
   display: flex; align-items: center; gap: 12px;
   margin-bottom: 16px;
