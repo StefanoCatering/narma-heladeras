@@ -538,6 +538,8 @@ function volverDeHistorial() {
   document.getElementById('step-historial').style.display = 'none';
   document.getElementById('step-cedula').style.display    = 'block';
 }
+
+function irRegistro() {
   document.getElementById('step-cedula').style.display   = 'none';
   document.getElementById('step-registro').style.display = 'block';
 }
