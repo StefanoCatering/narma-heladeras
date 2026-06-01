@@ -43,11 +43,11 @@ const CONFIG = {
       nombre:   "Aliado — Empresa Piloto",
     },
     {
-      usuario:  "secretaria",
-      pass:     "secretaria2025",
-      rol:      "secretaria",
+      usuario:  "empresapiloto",
+      pass:     "piloto2025",
+      rol:      "cliente",
       empresa:  "Empresa Piloto S.A.",
-      nombre:   "Secretaria",
+      nombre:   "Empresa Piloto S.A.",
     },
   ],
 
